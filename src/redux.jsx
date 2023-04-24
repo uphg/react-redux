@@ -1,31 +1,95 @@
-import { createContext, useContext, useEffect, useState  } from 'react'
+import { createContext, useEffect, useState  } from 'react'
 
-export const AppContext = createContext(null)
+function createRedux() {
+  let state = null
+  let reducer = null
+  const listeners = []
 
-export const store = {
-  state: null,
-  reducer: null,
-  setState(newState) {
-    store.state = newState
-    store.listeners.map(fn => fn(store.state))
-  },
-  listeners: [],
-  subscribe(fn) {
-    store.listeners.push(fn)
-    return () => {
-      const index = store.listeners.indexOf(fn)
-      store.listeners.splice(index, 1)
+  const store = {
+    getState() {
+      return state
+    },
+    dispatch(action) {
+      setState(reducer(state, action))
+    },
+    subscribe(fn) {
+      listeners.push(fn)
+      return () => {
+        const index = listeners.indexOf(fn)
+        listeners.splice(index, 1)
+      }
+    },
+    replaceReducer(newReducer) {
+      reducer = newReducer
     }
   }
+
+  function setState(newState) {
+    state = newState
+    listeners.map(fn => fn(state))
+  }
+
+  function createStore(initReducer, initState) {
+    state = initState
+    reducer = initReducer
+    return store
+  }
+
+  function thunkDispatch(action) {
+    if (action instanceof Function) {
+      return action(dispatch)
+    }
+
+    return store.dispatch(action) // 对象 type payload
+  }
+
+  function dispatch(action) {
+    if (isPromise(action.payload)) {
+      return action.payload.then(data => {
+        thunkDispatch({ ...action, payload: data })
+      })
+    }
+
+    return thunkDispatch(action)
+  }
+
+  function connect(selector, dispatchSelector) {
+    return (Component) => {
+      return (props) => {
+        const [, update] = useState({})
+        const data = selector ? selector(state) : { state }
+        const dispatchers = dispatchSelector ? dispatchSelector(store.dispatch) : { dispatch: store.dispatch }
+  
+        useEffect(() => {
+          const unsubscribe = store.subscribe(() => {
+            const newData = selector ? selector(state) : { state }
+            if (changed(data, newData)) {
+              update({})
+            }
+          })
+  
+          return unsubscribe
+        }, [selector])
+  
+        return <Component {...props} {...data} {...dispatchers}/>
+      }
+    }
+  }
+
+  return { store, createStore, connect }
 }
 
-export const createStore = (reducer, initState) => {
-  store.state = initState
-  store.reducer = reducer
-  return store
+const AppContext = createContext(null)
+
+function Provider({ store, children }) {
+  return (
+    <AppContext.Provider value={store}>
+      {children}
+    </AppContext.Provider>
+  )
 }
 
-const changed = (oldState, newState) => {
+function changed(oldState, newState) {
   const keys = Object.keys(oldState)
   let result = false
   for (const key of keys) {
@@ -37,44 +101,10 @@ const changed = (oldState, newState) => {
   return result
 }
 
-export const connect = (selector, dispatchSelector) => (Component) => {
-  return (props) => {
-    const { setState, state } = useContext(AppContext)
-    const [, update] = useState({})
-    const dispatch = (action) => {
-      setState(reducer(state, action))
-    }
-
-    const data = selector ? selector(state) : { state }
-    const dispatchers = dispatchSelector ? dispatchSelector(dispatch) : {dispatch}
-
-    useEffect(() => {
-      const unsubscribe = store.subscribe(() => {
-        const newData = selector ? selector(store.state) : { state: store.state }
-        if (changed(data, newData)) {
-          update({})
-        }
-      })
-
-      return unsubscribe
-    }, [selector])
-
-    return <Component {...props} {...data} {...dispatchers}/>
-  }
+function isPromise(value) {
+  return value instanceof Promise
 }
 
-const reducer = (state, { type, payload }) => {
-  if (type === 'updateUser') {
-    return {
-      ...state,
-      user: {
-        ...state.user,
-        ...payload
-      }
-    }
-  }
+const { store, createStore, connect } = createRedux()
 
-  return state
-}
-
-
+export { store, createStore, connect, Provider }

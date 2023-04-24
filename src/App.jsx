@@ -1,5 +1,5 @@
 import { connectToUser } from './connecters/ConnectToUser'
-import { AppContext, connect, createStore } from './redux'
+import { Provider, connect, createStore } from './redux'
 
 const reducer = (state, { type, payload }) => {
   if (type === 'updateUser') {
@@ -15,21 +15,18 @@ const reducer = (state, { type, payload }) => {
   return state
 }
 
-const initState = {
+const store = createStore(reducer, {
   user: { name: 'Jack', age: 18 },
   group: { name: 'Tom组' }
-}
-
-
-const store = createStore(reducer, initState)
+})
 
 function App() {
   return (
-    <AppContext.Provider value={store}>
+    <Provider store={store}>
       <Child1/>
       <Child2/>
       <Child3/>
-    </AppContext.Provider>
+    </Provider>
   )
 }
 
