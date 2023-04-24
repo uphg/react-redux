@@ -1,16 +1,31 @@
-import { useState } from 'react'
-import { useContext, createContext } from 'react'
+import { connectToUser } from './connecters/ConnectToUser'
+import { AppContext, connect, createStore } from './redux'
 
-const AppContext = createContext(null)
+const reducer = (state, { type, payload }) => {
+  if (type === 'updateUser') {
+    return {
+      ...state,
+      user: {
+        ...state.user,
+        ...payload
+      }
+    }
+  }
+
+  return state
+}
+
+const initState = {
+  user: { name: 'Jack', age: 18 },
+  group: { name: 'Tom组' }
+}
+
+
+const store = createStore(reducer, initState)
 
 function App() {
-  const [appState, setAppState] = useState({
-    user: {name: 'frank', age: 18}
-  })
-  const contextValue = { appState, setAppState }
-
   return (
-    <AppContext.Provider value={contextValue}>
+    <AppContext.Provider value={store}>
       <Child1/>
       <Child2/>
       <Child3/>
@@ -18,39 +33,51 @@ function App() {
   )
 }
 
-const Child1 = () => (
-  <div className="child">
-    <div>老大</div>
-    <User/>
-  </div>
-)
-
-const Child2 = () => (
-  <div className="child">
-    <div>老二</div>
-    <UserModifier />
-  </div>
-)
-
-const Child3 = () => <div className="child">老三</div>
-
-const User = () => {
-  const contextValue = useContext(AppContext)
-  return <div>User: {contextValue.appState.user.name}</div>
+const Child1 = () => {
+  return (
+    <div className="child">
+      <div>老大</div>
+      <User/>
+    </div>
+  )
 }
 
-const UserModifier = () => {
-  const contextValue = useContext(AppContext)
+const Child2 = () => {
+  return (
+    <div className="child">
+      <div>老二</div>
+      <UserModifier />
+    </div>
+  )
+}
+
+const Child3 = () => {
+  return (
+    <div className="child">
+      <div>老三</div>
+      <Group />
+    </div>
+  )
+}
+
+const User = connectToUser(({ user }) => {
+  return <div>User: {user.name}</div>
+})
+
+const UserModifier = connectToUser(({ updateUser, user }) => {
   const onChange = (e) => {
-    contextValue.appState.user.name = e.target.value
-    contextValue.setAppState({ ...contextValue.appState })
+    updateUser({ name: e.target.value })
   }
 
   return (
     <div>
-      <input type="text" value={contextValue.appState.user.name} onChange={onChange}/>
+      <input type="text" value={user.name} onChange={onChange}/>
     </div>
   )
-}
+})
+
+const Group = connect((state) => state.group)((group) => (
+  <div>{group.name}</div>
+))
 
 export default App
