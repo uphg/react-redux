@@ -37,7 +37,7 @@ function createRedux() {
 
   function thunkDispatch(action) {
     if (action instanceof Function) {
-      return action(dispatch)
+      return action(store.dispatch)
     }
 
     return store.dispatch(action) // 对象 type payload
@@ -58,7 +58,7 @@ function createRedux() {
       return (props) => {
         const [, update] = useState({})
         const data = selector ? selector(state) : { state }
-        const dispatchers = dispatchSelector ? dispatchSelector(store.dispatch) : { dispatch: store.dispatch }
+        const dispatchers = dispatchSelector ? dispatchSelector(dispatch) : { dispatch }
   
         useEffect(() => {
           const unsubscribe = store.subscribe(() => {

@@ -57,8 +57,47 @@ const Child3 = () => {
   )
 }
 
-const User = connectToUser(({ user }) => {
-  return <div>User: {user.name}</div>
+const ajax1 = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({data: {name: '获取 Promise 数据'}})
+    }, 3000)
+  })
+}
+
+const ajax2 = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({data: {name: '获取函数调用数据'}})
+    }, 3000)
+  })
+}
+
+const fetchUserPromise = () => {
+  return ajax1('/user').then(response => response.data)
+}
+const fetchUser = (dispatch) => {
+  ajax2('/user').then(response => dispatch({type: 'updateUser', payload: response.data}))
+}
+
+const User = connect(null, null)(({ state, dispatch }) => {
+  const onClickAsyncFetch = () => {
+    dispatch({type: 'updateUser', payload: fetchUserPromise()})
+  }
+
+  const onClickFnFetch = () => {
+    dispatch(fetchUser)
+  }
+
+  return (
+    <div>
+      <div>User: {state.user.name}</div>
+      <div>
+        <button onClick={onClickAsyncFetch}>异步获取 User</button>
+        <button onClick={onClickFnFetch}>函数请求 User</button>
+      </div>
+    </div>
+  )
 })
 
 const UserModifier = connectToUser(({ updateUser, user }) => {
